@@ -1,0 +1,12 @@
+{
+  "canisters": {
+    "school_placement_ICP": {
+      "type": "custom",
+      "root": "src",
+      "ts": "src/index.ts",
+      "candid": "src/index.did",
+      "build": "npx azle school_placement_ICP",
+      "wasm": ".azle/school_placement_ICP/school_placement_ICP.wasm.gz"
+    }
+  }
+}
