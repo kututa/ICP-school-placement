@@ -99,35 +99,6 @@ const highschoolStorage = new StableBTreeMap<string, Highschool>(3, 44, 512);
 
 // Initialization of ministryStorage
 $update;
-export function initMinistry(): Result<Ministry, string> {
-  try {
-    // Validate that the ministry has not been initialized already
-    if (!ministryStorage.isEmpty()) {
-      return Result.Err<Ministry, string>(
-        "Ministry has already been initialized"
-      );
-    }
-
-    // Create a new ministry
-    const ministry: Ministry = {
-      id: uuidv4(),
-      ministry: ic.caller(),
-    };
-
-    // Insert the ministry into ministryStorage
-    ministryStorage.insert(ministry.id, ministry);
-
-    return Result.Ok(ministry);
-  } catch (error) {
-    return Result.Err<Ministry, string>("Failed to initialize ministry");
-  }
-}
-
-// check if the person making the request is the ministry
-function isMinistry(caller: string): boolean {
-  const ministry = ministryStorage.values()[0];
-  return ministry.ministry.toText() !== caller;
-}
 
 $update;
 // Function to add a new highschool
@@ -168,25 +139,80 @@ export function addHighschool(
   }
 }
 
-$query;
-// get highschool by id
-export function getHighschool(id: string): Result<Highschool, string> {
+// Initialization of ministryStorage
+$update;
+export function initMinistry(): Result<Ministry, string> {
   try {
-    // Validate the ID
-    if (!id) {
-      return Result.Err("Invalid ID");
+    // Validate that the ministry has not been initialized already
+    if (isMinistryInitialized()) {
+      return Result.Err<Ministry, string>("Ministry has already been initialized");
     }
 
-    // Get the highschool slot
-    const highschoolResult = highschoolStorage.get(id);
+    // Create a new ministry
+    const ministry: Ministry = {
+      id: uuidv4(),
+      ministry: ic.caller(),
+    };
 
-    // Use match to handle the Result type
-    return match(highschoolResult, {
-      Some: (highschool) => Result.Ok<Highschool, string>(highschool),
-      None: () => Result.Err<Highschool, string>("Highschool slot not found"),
-    });
+    // Insert the ministry into ministryStorage
+    ministryStorage.insert(ministry.id, ministry);
+
+    return Result.Ok(ministry);
   } catch (error) {
-    return Result.Err("Failed to get highschool slot");
+    return Result.Err<Ministry, string>("Failed to initialize ministry");
+  }
+}
+// Check if the ministry has been initialized
+function isMinistryInitialized(): boolean {
+  return !ministryStorage.isEmpty();
+}
+
+// check if the person making the request is the ministry
+function isMinistry(caller: string): boolean {
+  const ministry = getMinistry();
+  return ministry && ministry.ministry.toText() !== caller;
+}
+
+// Get the ministry from storage
+function getMinistry(): Ministry | undefined {
+  const ministries = ministryStorage.values();
+  return ministries.length > 0 ? ministries[0] : undefined;
+}
+
+// Function to add a new highschool
+export function addHighschool(payload: HighschoolPayload): Result<string, string> {
+  try {
+    // Validate that the ministry exists
+    const ministry = getMinistry();
+    if (!ministry) {
+      return Result.Err("Ministry has not been initialized");
+    }
+
+    // Check if the caller is the ministry
+    if (isMinistry(ic.caller().toText())) {
+      return Result.Err("Action reserved for the ministry");
+    }
+
+    // Validate the payload
+    const { name, county, level, phone } = payload;
+    if (!name || !county || !level || !phone) {
+      return Result.Err("Incomplete input data!");
+    }
+    // Create a new highschool slot
+    const highschool: Highschool = {
+      id: uuidv4(),
+      name,
+      phone,
+      level,
+      county,
+    };
+
+    // Insert the highschool slot into highschoolStorage
+    highschoolStorage.insert(highschool.id, highschool);
+
+    return Result.Ok(highschool.id);
+  } catch (error) {
+    return Result.Err("Failed to add highschool slot");
   }
 }
 
