@@ -2,7 +2,7 @@
 
 ## Overview
 
-This smart contract implements a parking reservation system using the typescript on azle for internet Computer. The system allows for the initialization of an owner, addition of parking slots, allocation of parking spaces to clients, valet delivery, and various operations on parking slots.
+This ICP smart contract places students to different levels of high schools based on their marks. Impliments Highschools, Students, with specific functionalities to add, retrieve, and update information. It also incorporates permission checks and security measures to ensure proper access control. The student placement mechanism adds a layer of complexity by considering marks for high school assignment.
 
 ## Prerequisites
 
@@ -16,73 +16,67 @@ This smart contract implements a parking reservation system using the typescript
 1. **Clone the repository:**
 
     ```bash
-    git clone https://github.com/Collins-Ruto/school-placement.git
-    cd school-placement
+    git clone https://github.com/kututa/ICP-school-placement.git
+    cd ICP-school-placement
     ```
 
-## Project Structure
+### Overview of the Inventory Management ICP Smart Contract:
 
-The project is organized into the following directories and files:
+#### 1. **Imported Modules:**
 
-- **`src/`**: Contains the source code for the school Placement System.
-  - **`index.ts`**: App entry point Implementation of the school Placement System.
+   - Import necessary modules from the 'azle' library for interacting with the Internet Computer Protocol, including functions like `$query`, `$update`, and various data types like `StableBTreeMap`, `Vec`, `match`, `Result`, `nat64`, `ic`, `Opt`, `Principal`, and `Record`.
+   - Import the `uuid` library for generating unique identifiers.
 
-- **`node_modules/`**: Directory for project dependencies.
+#### 2. Record Types
 
-- **`package.json`**: Configuration file for npm, including project dependencies and scripts.
+   - Define TypeScript record types for different entities within the inventory system:
+     - `Ministry`: Represents a ministry with an ID and associated principal.
+     - `Highschool`: Represents a high school with an ID, name, phone, level, and county.
+     - `Student`: Represents a student with an ID, name, phone, marks, county, and associated high school.
+     - `HighschoolPayload`: Represents the payload for adding a new high school.
+     - `UpdateHighschoolPayload`: Represents the payload for updating high school information.
+     - `StudentPayload`: Represents the payload for adding a new student.
+     - `CarResponse`: Represents the response for car-related actions.
 
-- **`tsconfig.json`**: TypeScript configuration file, specifying compiler options.
+#### 3. Storage Instances
 
-- **`LICENSE`**: MIT License file, detailing the terms under which the project is licensed.
+   - Create instances of `StableBTreeMap` for storing information about ministries, high schools, and students.
 
-- **`README.md`**: Project documentation providing an overview, installation instructions, usage details, and license information.
+#### 4. Initialization Function
 
-## Functions
+   - `initMinistry()` to initialize the ministry, ensuring it has not been initialized already.
 
-### `initOwner(name: string): string`
+#### 5. Permission and Authentication
 
-- Initializes the system owner with a unique ID, name, and timestamp.
-- There can only be one owner per contract.
+   - Define `isMinistry` to check if the caller is the ministry.
 
-### `getOwner(): Owner`
+#### 6. High School Functions
 
-- Retrieves the details of the system owner.
+   - `addHighschool(payload: HighschoolPayload)` to add a new high school, validating input data, ministry existence, and caller identity.
+   - `getHighschool(id: string)` to get information about a high school by ID.
+   - `getAllHighschools()` to get a list of all high schools.
+   - `searchHighschoolByName(name: string)` to search for high schools by name.
+   - `searchHighschoolByCounty(county: string)` to search for high schools by county.
+   - `searchHighschoolByLevel(level: string)` to search for high schools by level.
+   - `updateHighschoolSlot(payload: UpdateHighschoolPayload)` to update information for a high school, validating input data and caller identity.
+   - `deleteHighschoolSlot(id: string)` to delete a high school slot, validating the ID and caller identity.
 
-### `getAvailableSlots(): Result<Vec<Parking>, string>`
+#### 7. Student Functions
 
-- Retrieves a list of available parking slots.
+   - `addStudent(payload: StudentPayload)` to add a new student, validating input data, ministry existence, and caller identity. Uses `placeStudent` to determine the high school placement based on marks.
+   - `placeStudent(marks: number)` to determine the high school placement based on marks.
 
-### `addParkingSlot(payload: ParkingPayload): string`
+#### 8. Utility Functions
 
-- Adds a new parking slot to the system. Reserved for the contract owner.
+   - `placeStudent(marks: number)`: Determines the appropriate high school placement based on student marks.
 
-### `getParkingSpace(payload: AllocationPayload): string`
+#### 9. Testing and Mocking
 
-- Allocates a parking space to a client, marking the slot as occupied.
+   - Mock the 'crypto' object for testing purposes.
 
-### `valetDelivery(payload: ValletPayload): string`
+#### 10. Security Measures
 
-- Handles vallet delivery, updating the total cost and client's location.
-
-### `pickupCar(id: string): { msg: string; price: number }`
-
-- Picks up a car from a parking slot, calculates the parking duration and cost.
-
-### `updateParkingSlot(id: string, payload: ParkingPayload): string`
-
-- Updates information for a parking slot, such as parking ID and price. Reserved for the contract owner.
-
-### `deleteParkingSlot(id: string): string`
-
-- Deletes a parking slot from the system. Reserved for the contract owner.
-
-## Usage
-
-- Initialize the owner using `initOwner(name)`.
-- Add parking slots with `addParkingSlot(payload)`.
-- Allocate parking spaces to clients using `getParkingSpace(payload)`.
-- Manage vallet delivery with `valetDelivery(payload)`.
-- Perform various operations on parking slots, including updates and deletions.
+   - security measures to ensure that actions are reserved for the ministry or contract ministry as appropriate.
 
 ## Try it out
 

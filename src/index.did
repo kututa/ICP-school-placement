@@ -1,33 +1,46 @@
-type AllocationPayload = record { parking_id : text; car_model : text };
-type CarResponse = record { msg : text; price : float64 };
-type Owner = record {
+type Highschool = record {
   id : text;
-  updated_at : opt nat64;
-  owner : principal;
   name : text;
-  created_date : nat64;
+  level : text;
+  phone : text;
+  county : text;
 };
-type Parking = record {
+type HighschoolPayload = record {
+  name : text;
+  level : text;
+  phone : text;
+  county : text;
+};
+type Ministry = record { id : text; ministry : principal };
+type Student = record {
   id : text;
-  updated_at : opt nat64;
-  is_occupied : bool;
-  price : text;
-  created_date : nat64;
-  parking_slot : text;
+  marks : float64;
+  name : text;
+  phone : text;
+  highschool : Highschool;
+  county : text;
 };
-type ParkingPayload = record { price : text; parking_slot : text };
-type ValetPayload = record { allocation_id : text; client_location : text };
+type StudentPayload = record {
+  name : text;
+  phone : text;
+  county : text;
+  marks_out_of_1000 : float64;
+};
+type UpdateHighschoolPayload = record { id : text; level : text; phone : text };
 type _AzleResult = variant { Ok : text; Err : text };
-type _AzleResult_1 = variant { Ok : vec Parking; Err : text };
-type _AzleResult_2 = variant { Ok : Owner; Err : text };
-type _AzleResult_3 = variant { Ok : CarResponse; Err : text };
+type _AzleResult_1 = variant { Ok : Student; Err : text };
+type _AzleResult_2 = variant { Ok : vec Highschool; Err : text };
+type _AzleResult_3 = variant { Ok : Highschool; Err : text };
+type _AzleResult_4 = variant { Ok : Ministry; Err : text };
 service : () -> {
-  addParkingSlot : (ParkingPayload) -> (_AzleResult);
-  deleteParkingSlot : (text) -> (_AzleResult);
-  getAvailableSlots : () -> (_AzleResult_1) query;
-  getParkingSpace : (AllocationPayload) -> (_AzleResult);
-  initOwner : (text) -> (_AzleResult_2);
-  pickupCar : (text) -> (_AzleResult_3) query;
-  updateParkingSlot : (text, ParkingPayload) -> (_AzleResult);
-  valetDelivery : (ValetPayload) -> (_AzleResult);
+  addHighschool : (HighschoolPayload) -> (_AzleResult);
+  addStudent : (StudentPayload) -> (_AzleResult_1);
+  getAllHighschools : () -> (_AzleResult_2) query;
+  getHighschool : (text) -> (_AzleResult_3) query;
+  initMinistry : () -> (_AzleResult_4);
+  placeStudent : (float64) -> (_AzleResult_3);
+  searchHighschoolByCounty : (text) -> (_AzleResult_2) query;
+  searchHighschoolByLevel : (text) -> (_AzleResult_2) query;
+  searchHighschoolByName : (text) -> (_AzleResult_2) query;
+  updateHighschoolSlot : (UpdateHighschoolPayload) -> (_AzleResult_3);
 }

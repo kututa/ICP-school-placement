@@ -2,7 +2,6 @@
 import {
   $query,
   $update,
-  Record,
   StableBTreeMap,
   Vec,
   match,
@@ -11,6 +10,7 @@ import {
   ic,
   Opt,
   Principal,
+  Record,
 } from "azle";
 import { v4 as uuidv4 } from "uuid";
 
@@ -24,65 +24,36 @@ type Highschool = Record<{
   id: string;
   name: string;
   phone: string;
-  level: SchoolLevel;
+  level: string;
   county: string;
-}>;
-
-type Placement = Record<{
-  id: string;
-  highschool: Principal;
-  student: Principal;
 }>;
 
 type Student = Record<{
   id: string;
   name: string;
   phone: string;
-  grade: Grade;
+  marks: number;
   county: string;
-  highschool: Highschool | undefined;
+  highschool: Highschool;
 }>;
 
 type HighschoolPayload = Record<{
   name: string;
   phone: string;
-  level: SchoolLevel;
+  level: string;
   county: string;
 }>;
 
 type UpdateHighschoolPayload = Record<{
   id: string;
-  level: SchoolLevel;
+  level: string;
   phone: string;
 }>;
-
-enum SchoolLevel {
-  NATIONAL = "NATIONAL",
-  COUNTY = "COUNTY",
-  SUB_COUNTY = "SUB_COUNTY",
-  DISTRICT = "DISTRICT",
-  DAYSCHOOL = "DAYSCHOOL",
-}
-
-enum Grade {
-  A1 = "A+",
-  A2 = "A",
-  A3 = "A-",
-  B1 = "B+",
-  B2 = "B",
-  B3 = "B-",
-  C1 = "C+",
-  C2 = "C",
-  C3 = "C-",
-  D1 = "D+",
-  D2 = "D",
-  D3 = "D-",
-}
 
 type StudentPayload = Record<{
   name: string;
   phone: string;
-  grade: Grade;
+  marks_out_of_1000: number;
   county: string;
 }>;
 
@@ -93,7 +64,6 @@ type CarResponse = Record<{
 
 // Creating instances of StableBTreeMap for each entity type
 const ministryStorage = new StableBTreeMap<string, Ministry>(0, 44, 512);
-const placementStorage = new StableBTreeMap<string, Placement>(1, 44, 512);
 const studentStorage = new StableBTreeMap<string, Student>(2, 44, 512);
 const highschoolStorage = new StableBTreeMap<string, Highschool>(3, 44, 512);
 
@@ -268,7 +238,7 @@ export function searchHighschoolByCounty(
 $query;
 // search highschool by level
 export function searchHighschoolByLevel(
-  level: SchoolLevel
+  level: string
 ): Result<Vec<Highschool>, string> {
   try {
     // Validate the level
@@ -299,26 +269,42 @@ $update;
 export function addStudent(payload: StudentPayload): Result<Student, string> {
   try {
     // Validate the payload
-    if (!payload.name || !payload.county || !payload.grade || !payload.phone) {
+    if (
+      !payload.name ||
+      !payload.county ||
+      !payload.marks_out_of_1000 ||
+      !payload.phone
+    ) {
       return Result.Err("Incomplete input data!");
     }
 
-    // Create a new student
-    const student: Student = {
-      id: uuidv4(),
-      name: payload.name,
-      phone: payload.phone,
-      grade: payload.grade,
-      county: payload.county,
-      highschool: undefined,
-    };
+    // Check if the caller is the contract ministry
+    if (isMinistry(ic.caller().toText())) {
+      return Result.Err("Action reserved for the contract ministry");
+    }
 
-    // Insert the student into studentStorage
-    studentStorage.insert(student.id, student);
+    // place student
+    return match(placeStudent(payload.marks_out_of_1000), {
+      Ok: (highschool) => {
+        // Create a new student
+        const student: Student = {
+          id: uuidv4(),
+          name: payload.name,
+          phone: payload.phone,
+          marks: payload.marks_out_of_1000,
+          county: payload.county,
+          highschool: highschool,
+        };
 
-    return Result.Ok(student);
+        // Insert the student into studentStorage
+        studentStorage.insert(student.id, student);
+
+        return Result.Ok<Student, string>(student);
+      },
+      Err: (error) => Result.Err<Student, string>(error),
+    });
   } catch (error) {
-    return Result.Err("Failed to add student");
+    return Result.Err<Student, string>("Failed to add student");
   }
 }
 
@@ -365,26 +351,69 @@ export function updateHighschoolSlot(
   }
 }
 
-$update;
-// Function to delete a highschool slot
-export function deleteHighschoolSlot(id: string): Result<string, string> {
+// place student to highschool according to their markss
+function placeStudent(marks: number): Result<Highschool, string> {
   try {
-    // Validate the ID
-    if (!id) {
-      return Result.Err("Invalid ID");
-    }
+    // Get the highschool
+    const highschools = highschoolStorage.values();
 
-    // Check if the caller is the contract ministry
-    if (isMinistry(ic.caller().toText())) {
-      return Result.Err("Action reserved for the contract ministry");
-    }
+    // Use match to handle the Result type
+    return match(highschools, {
+      Some: (highschools: Highschool[]) => {
+        highschools.forEach((highschool) => {
+          const marksLevel =
+            marks >= 800
+              ? "NATIONAL"
+              : marks >= 500
+              ? "COUNTY"
+              : marks >= 300
+              ? "SUB_COUNTY"
+              : "DISTRICT";
 
-    // Remove the highschool slot from highschoolStorage
-    highschoolStorage.remove(id);
+          // Check if the student's marks matches the highschool's level
+          if (marksLevel !== highschool.level) {
+            return Result.Err<Highschool, string>(
+              "Student's marks does not match the highschool's level"
+            );
+          }
 
-    return Result.Ok(`Highschool slot of ID: ${id} removed successfully`);
+          return Result.Ok<Highschool, string>(highschool);
+        });
+        return Result.Err<Highschool, string>("Highschool not found");
+      },
+      None: () => Result.Err<Highschool, string>("Highschool not found"),
+    });
   } catch (error) {
-    return Result.Err("Failed to delete highschool slot");
+    return Result.Err<Highschool, string>("Failed to place student");
+  }
+}
+
+$query;
+// search student by name
+export function searchStudentByName(
+  name: string
+): Result<Vec<Student>, string> {
+  try {
+    // Validate the name
+    if (!name) {
+      return Result.Err("Invalid name");
+    }
+
+    // Get all students
+    const students = studentStorage.values();
+
+    // Filter the students by name
+    const filteredStudents = students.filter((student) =>
+      student.name.toLowerCase().includes(name.toLowerCase())
+    );
+
+    // check if there are any students
+    return match(filteredStudents, {
+      0: () => Result.Err<Vec<Student>, string>("No students found"),
+      _: () => Result.Ok<Vec<Student>, string>(filteredStudents),
+    });
+  } catch (error) {
+    return Result.Err("Failed to search students");
   }
 }
 
