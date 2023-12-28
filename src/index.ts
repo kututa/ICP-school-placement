@@ -40,7 +40,7 @@ type Student = Record<{
 type HighschoolPayload = Record<{
   name: string;
   phone: string;
-  level: string;
+  level_out_of_4: number;
   county: string;
 }>;
 
@@ -103,11 +103,13 @@ $update;
 // Function to add a new highschool
 export function addHighschool(
   payload: HighschoolPayload
-): Result<string, string> {
+): Result<Highschool, string> {
   try {
     // Validate that the ministry exists
     if (ministryStorage.isEmpty()) {
-      return Result.Err("Ministry has not been initialized");
+      return Result.Err(
+        "Ministry has not been initialized, init ministry first"
+      );
     }
 
     // Check if the caller is the ministry
@@ -116,25 +118,39 @@ export function addHighschool(
     }
 
     // Validate the payload
-    if (!payload.name || !payload.county || !payload.level || !payload.phone) {
+    if (
+      !payload.name ||
+      !payload.county ||
+      !payload.level_out_of_4 ||
+      !payload.phone
+    ) {
       return Result.Err("Incomplete input data!");
     }
 
-    // Create a new highschool slot
+    const level =
+      payload.level_out_of_4 > 3
+        ? "NATIONAL"
+        : payload.level_out_of_4 > 2
+        ? "COUNTY"
+        : payload.level_out_of_4 > 1
+        ? "SUB-COUNTY"
+        : "DISTRICT";
+
+    // Create a new highschool
     const highschool: Highschool = {
       id: uuidv4(),
       name: payload.name,
       phone: payload.phone,
-      level: payload.level,
+      level: level,
       county: payload.county,
     };
 
-    // Insert the highschool slot into highschoolStorage
+    // Insert the highschool into highschoolStorage
     highschoolStorage.insert(highschool.id, highschool);
 
-    return Result.Ok(highschool.id);
+    return Result.Ok(highschool);
   } catch (error) {
-    return Result.Err("Failed to add highschool slot");
+    return Result.Err("Failed to add highschool");
   }
 }
 
@@ -147,16 +163,17 @@ export function getHighschool(id: string): Result<Highschool, string> {
       return Result.Err("Invalid ID");
     }
 
-    // Get the highschool slot
+    // Get the highschool
     const highschoolResult = highschoolStorage.get(id);
 
     // Use match to handle the Result type
     return match(highschoolResult, {
       Some: (highschool) => Result.Ok<Highschool, string>(highschool),
-      None: () => Result.Err<Highschool, string>("Highschool slot not found"),
+      None: () =>
+        Result.Err<Highschool, string>(`Highschool id: ${id} not found`),
     });
   } catch (error) {
-    return Result.Err("Failed to get highschool slot");
+    return Result.Err("Failed to get highschool");
   }
 }
 
@@ -168,10 +185,13 @@ export function getAllHighschools(): Result<Vec<Highschool>, string> {
     const highschools = highschoolStorage.values();
 
     // check if there are any highschools
-    return match(highschools, {
-      0: () => Result.Err<Vec<Highschool>, string>("No highschools found"),
-      _: () => Result.Ok<Vec<Highschool>, string>(highschools),
-    });
+    if (highschools.length === 0) {
+      return Result.Err<Vec<Highschool>, string>(
+        "No highschools found, add them first"
+      );
+    }
+
+    return Result.Ok<Vec<Highschool>, string>(highschools);
   } catch (error) {
     return Result.Err("Failed to get highschools");
   }
@@ -197,10 +217,13 @@ export function searchHighschoolByName(
     );
 
     // check if there are any highschools
-    return match(filteredHighschools, {
-      0: () => Result.Err<Vec<Highschool>, string>("No highschools found"),
-      _: () => Result.Ok<Vec<Highschool>, string>(filteredHighschools),
-    });
+    if (filteredHighschools.length === 0) {
+      return Result.Err<Vec<Highschool>, string>(
+        "No highschools found, add them first"
+      );
+    }
+
+    return Result.Ok<Vec<Highschool>, string>(filteredHighschools);
   } catch (error) {
     return Result.Err("Failed to search highschools");
   }
@@ -226,10 +249,13 @@ export function searchHighschoolByCounty(
     );
 
     // check if there are any highschools
-    return match(filteredHighschools, {
-      0: () => Result.Err<Vec<Highschool>, string>("No highschools found"),
-      _: () => Result.Ok<Vec<Highschool>, string>(filteredHighschools),
-    });
+    if (filteredHighschools.length === 0) {
+      return Result.Err<Vec<Highschool>, string>(
+        "No highschools found, add them first"
+      );
+    }
+
+    return Result.Ok<Vec<Highschool>, string>(filteredHighschools);
   } catch (error) {
     return Result.Err("Failed to search highschools");
   }
@@ -238,7 +264,7 @@ export function searchHighschoolByCounty(
 $query;
 // search highschool by level
 export function searchHighschoolByLevel(
-  level: string
+  level: number
 ): Result<Vec<Highschool>, string> {
   try {
     // Validate the level
@@ -249,16 +275,28 @@ export function searchHighschoolByLevel(
     // Get all highschools
     const highschools = highschoolStorage.values();
 
+    const abslevel =
+      level > 3
+        ? "NATIONAL"
+        : level > 2
+        ? "COUNTY"
+        : level > 1
+        ? "SUB-COUNTY"
+        : "DISTRICT";
+
     // Filter the highschools by level
     const filteredHighschools = highschools.filter(
-      (highschool) => highschool.level === level
+      (highschool) => highschool.level === abslevel
     );
 
     // check if there are any highschools
-    return match(filteredHighschools, {
-      0: () => Result.Err<Vec<Highschool>, string>("No highschools found"),
-      _: () => Result.Ok<Vec<Highschool>, string>(filteredHighschools),
-    });
+    if (filteredHighschools.length === 0) {
+      return Result.Err<Vec<Highschool>, string>(
+        "No highschools found, add them first"
+      );
+    }
+
+    return Result.Ok<Vec<Highschool>, string>(filteredHighschools);
   } catch (error) {
     return Result.Err("Failed to search highschools");
   }
@@ -286,6 +324,12 @@ export function addStudent(payload: StudentPayload): Result<Student, string> {
     // place student
     return match(placeStudent(payload.marks_out_of_1000), {
       Ok: (highschool) => {
+        if (!highschool.id) {
+          return Result.Err<Student, string>(
+            `No highschool available for that marks level, consider adding highschools for each level`
+          );
+        }
+
         // Create a new student
         const student: Student = {
           id: uuidv4(),
@@ -304,13 +348,55 @@ export function addStudent(payload: StudentPayload): Result<Student, string> {
       Err: (error) => Result.Err<Student, string>(error),
     });
   } catch (error) {
-    return Result.Err<Student, string>("Failed to add student");
+    return Result.Err<Student, string>(`Failed to add student due to ${error}`);
+  }
+}
+
+// place student to highschool according to their markss
+function placeStudent(marks: number): Result<Highschool, string> {
+  try {
+    // Get the highschool
+    const highschools = highschoolStorage.values();
+
+    // Use match to. handle the Result type
+    if (highschools.length == 0) {
+      return Result.Err<Highschool, string>(
+        "No highschools found, add them first"
+      );
+    }
+
+    let returnSchool: Highschool = {} as unknown as Highschool;
+
+    highschools.forEach((highschool) => {
+      const marksLevel =
+        marks >= 800
+          ? "NATIONAL"
+          : marks >= 500
+          ? "COUNTY"
+          : marks >= 300
+          ? "SUB-COUNTY"
+          : "DISTRICT";
+
+      // Check if the student's marks matches the highschool's level
+      if (marksLevel !== highschool.level) {
+        return Result.Err<Highschool, string>(
+          "Student's marks does not match the highschool's level"
+        );
+      }
+      returnSchool = highschool;
+    });
+    return Result.Ok<Highschool, string>(returnSchool);
+    // return Result.Err<Highschool, string>("could not place student");
+  } catch (error) {
+    return Result.Err<Highschool, string>(
+      `failed to place student due to ${error}`
+    );
   }
 }
 
 $update;
-// Function to update information for a highschool slot
-export function updateHighschoolSlot(
+// Function to update information for a highschool
+export function updateHighschool(
   payload: UpdateHighschoolPayload
 ): Result<Highschool, string> {
   try {
@@ -329,62 +415,26 @@ export function updateHighschoolSlot(
       return Result.Err("Incomplete input data!");
     }
 
-    // Get the highschool slot
+    // Get the highschool
     const highschoolResult = highschoolStorage.get(payload.id);
 
     // Use match to handle the Result type
     return match(highschoolResult, {
       Some: (highschool) => {
-        // Update the highschool slot information
+        // Update the highschool information
         highschool.level = payload.level;
         highschool.phone = payload.phone;
 
-        // Insert the updated highschool slot into highschoolStorage
+        // Insert the updated highschool into highschoolStorage
         highschoolStorage.insert(highschool.id, highschool);
 
         return Result.Ok<Highschool, string>(highschool);
       },
-      None: () => Result.Err<Highschool, string>("Highschool slot not found"),
+      None: () =>
+        Result.Err<Highschool, string>("Highschool not found, add them first"),
     });
   } catch (error) {
-    return Result.Err<Highschool, string>("Failed to update highschool slot");
-  }
-}
-
-// place student to highschool according to their markss
-function placeStudent(marks: number): Result<Highschool, string> {
-  try {
-    // Get the highschool
-    const highschools = highschoolStorage.values();
-
-    // Use match to handle the Result type
-    return match(highschools, {
-      Some: (highschools: Highschool[]) => {
-        highschools.forEach((highschool) => {
-          const marksLevel =
-            marks >= 800
-              ? "NATIONAL"
-              : marks >= 500
-              ? "COUNTY"
-              : marks >= 300
-              ? "SUB_COUNTY"
-              : "DISTRICT";
-
-          // Check if the student's marks matches the highschool's level
-          if (marksLevel !== highschool.level) {
-            return Result.Err<Highschool, string>(
-              "Student's marks does not match the highschool's level"
-            );
-          }
-
-          return Result.Ok<Highschool, string>(highschool);
-        });
-        return Result.Err<Highschool, string>("Highschool not found");
-      },
-      None: () => Result.Err<Highschool, string>("Highschool not found"),
-    });
-  } catch (error) {
-    return Result.Err<Highschool, string>("Failed to place student");
+    return Result.Err<Highschool, string>("Failed to update highschool");
   }
 }
 
@@ -408,10 +458,11 @@ export function searchStudentByName(
     );
 
     // check if there are any students
-    return match(filteredStudents, {
-      0: () => Result.Err<Vec<Student>, string>("No students found"),
-      _: () => Result.Ok<Vec<Student>, string>(filteredStudents),
-    });
+    if (filteredStudents.length === 0) {
+      return Result.Err<Vec<Student>, string>("No students found");
+    }
+
+    return Result.Ok<Vec<Student>, string>(filteredStudents);
   } catch (error) {
     return Result.Err("Failed to search students");
   }

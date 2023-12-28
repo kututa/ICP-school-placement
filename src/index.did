@@ -7,7 +7,7 @@ type Highschool = record {
 };
 type HighschoolPayload = record {
   name : text;
-  level : text;
+  level_out_of_4 : float64;
   phone : text;
   county : text;
 };
@@ -27,20 +27,20 @@ type StudentPayload = record {
   marks_out_of_1000 : float64;
 };
 type UpdateHighschoolPayload = record { id : text; level : text; phone : text };
-type _AzleResult = variant { Ok : text; Err : text };
+type _AzleResult = variant { Ok : Highschool; Err : text };
 type _AzleResult_1 = variant { Ok : Student; Err : text };
 type _AzleResult_2 = variant { Ok : vec Highschool; Err : text };
-type _AzleResult_3 = variant { Ok : Highschool; Err : text };
-type _AzleResult_4 = variant { Ok : Ministry; Err : text };
+type _AzleResult_3 = variant { Ok : Ministry; Err : text };
+type _AzleResult_4 = variant { Ok : vec Student; Err : text };
 service : () -> {
   addHighschool : (HighschoolPayload) -> (_AzleResult);
   addStudent : (StudentPayload) -> (_AzleResult_1);
   getAllHighschools : () -> (_AzleResult_2) query;
-  getHighschool : (text) -> (_AzleResult_3) query;
-  initMinistry : () -> (_AzleResult_4);
-  placeStudent : (float64) -> (_AzleResult_3);
+  getHighschool : (text) -> (_AzleResult) query;
+  initMinistry : () -> (_AzleResult_3);
   searchHighschoolByCounty : (text) -> (_AzleResult_2) query;
-  searchHighschoolByLevel : (text) -> (_AzleResult_2) query;
+  searchHighschoolByLevel : (float64) -> (_AzleResult_2) query;
   searchHighschoolByName : (text) -> (_AzleResult_2) query;
-  updateHighschoolSlot : (UpdateHighschoolPayload) -> (_AzleResult_3);
+  searchStudentByName : (text) -> (_AzleResult_4) query;
+  updateHighschool : (UpdateHighschoolPayload) -> (_AzleResult);
 }
